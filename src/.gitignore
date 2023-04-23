@@ -1,3 +1,5 @@
+# Source: https://github.com/microsoft/TypeScript-Node-Starter/blob/master/.gitignore
+
 lib-cov
 *.seed
 *.log
