@@ -9,7 +9,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _RigidBody_obj, _RigidBody_mass, _RigidBody_velocity, _RigidBody_acceleration, _RigidBody_isStationary, _RigidBody_friction, _RigidBody_frictionApplied;
+var _RigidBody_obj, _RigidBody_mass, _RigidBody_velocity, _RigidBody_acceleration, _RigidBody_isStationary, _RigidBody_friction, _RigidBody_frictionApplied, _RigidBody_isColliding;
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import Stats from 'three/examples/jsm/libs/stats.module';
@@ -21,7 +21,8 @@ class RigidBody {
         _RigidBody_acceleration.set(this, void 0);
         _RigidBody_isStationary.set(this, void 0);
         _RigidBody_friction.set(this, void 0);
-        _RigidBody_frictionApplied.set(this, false);
+        _RigidBody_frictionApplied.set(this, new THREE.Vector3(0, 0, 0));
+        _RigidBody_isColliding.set(this, false);
         __classPrivateFieldSet(this, _RigidBody_obj, obj, "f");
         __classPrivateFieldSet(this, _RigidBody_mass, mass, "f");
         __classPrivateFieldSet(this, _RigidBody_velocity, velocity, "f");
@@ -29,90 +30,73 @@ class RigidBody {
         __classPrivateFieldSet(this, _RigidBody_isStationary, isStationary, "f");
         __classPrivateFieldSet(this, _RigidBody_friction, friction, "f");
     }
-    get obj() {
-        return __classPrivateFieldGet(this, _RigidBody_obj, "f");
-    }
-    set obj(obj) {
-        __classPrivateFieldSet(this, _RigidBody_obj, obj, "f");
-    }
-    get mass() {
-        return __classPrivateFieldGet(this, _RigidBody_mass, "f");
-    }
-    set mass(mass) {
-        __classPrivateFieldSet(this, _RigidBody_mass, mass, "f");
-    }
-    get velocity() {
-        return __classPrivateFieldGet(this, _RigidBody_velocity, "f");
-    }
-    set velocity(velocity) {
-        __classPrivateFieldSet(this, _RigidBody_velocity, velocity, "f");
-    }
-    get acceleration() {
-        return __classPrivateFieldGet(this, _RigidBody_acceleration, "f");
-    }
-    set acceleration(acceleration) {
-        __classPrivateFieldSet(this, _RigidBody_acceleration, acceleration, "f");
-    }
-    get isStationary() {
-        return __classPrivateFieldGet(this, _RigidBody_isStationary, "f");
-    }
-    set isStationary(isStationary) {
-        __classPrivateFieldSet(this, _RigidBody_isStationary, isStationary, "f");
-    }
-    get friction() {
-        return __classPrivateFieldGet(this, _RigidBody_friction, "f");
-    }
-    set friction(friction) {
-        __classPrivateFieldSet(this, _RigidBody_friction, friction, "f");
-    }
+    // setters
+    set obj(obj) { __classPrivateFieldSet(this, _RigidBody_obj, obj, "f"); }
+    set mass(mass) { __classPrivateFieldSet(this, _RigidBody_mass, mass, "f"); }
+    set velocity(velocity) { __classPrivateFieldSet(this, _RigidBody_velocity, velocity, "f"); }
+    set acceleration(acceleration) { __classPrivateFieldSet(this, _RigidBody_acceleration, acceleration, "f"); }
+    set isStationary(isStationary) { __classPrivateFieldSet(this, _RigidBody_isStationary, isStationary, "f"); }
+    set friction(friction) { __classPrivateFieldSet(this, _RigidBody_friction, friction, "f"); }
+    // getters
+    get obj() { return __classPrivateFieldGet(this, _RigidBody_obj, "f"); }
+    get mass() { return __classPrivateFieldGet(this, _RigidBody_mass, "f"); }
+    get velocity() { return __classPrivateFieldGet(this, _RigidBody_velocity, "f"); }
+    get acceleration() { return __classPrivateFieldGet(this, _RigidBody_acceleration, "f"); }
+    get isStationary() { return __classPrivateFieldGet(this, _RigidBody_isStationary, "f"); }
+    get friction() { return __classPrivateFieldGet(this, _RigidBody_friction, "f"); }
     update(deltaTime) {
+        __classPrivateFieldSet(this, _RigidBody_isColliding, false, "f");
         if (this.isStationary)
             return;
-        // gravity implementation
+        // accel due to grav
         this.acceleration.y = -9.81;
         // v = v0 + at
         // velocity += acceleration * time
         this.velocity.add(__classPrivateFieldGet(this, _RigidBody_acceleration, "f").clone().multiplyScalar(this.mass * deltaTime));
+        // collision response implementation, extra dynamics due to collision go here
         detectCollision(__classPrivateFieldGet(this, _RigidBody_obj, "f"), bodies, (result, r) => {
-            // Ff  = U * Fn
-            // Ff = U * mg
+            __classPrivateFieldSet(this, _RigidBody_isColliding, true, "f");
+            if (r.isStationary) {
+                if ((result.normal.y > 0 && this.velocity.y < 0) || (result.normal.y < 0 && this.velocity.y > 0))
+                    this.velocity.y = 0;
+                if ((result.normal.x > 0 && this.velocity.x < 0) || (result.normal.x < 0 && this.velocity.x > 0))
+                    this.velocity.x = 0;
+                if ((result.normal.z > 0 && this.velocity.z < 0) || (result.normal.z < 0 && this.velocity.z > 0))
+                    this.velocity.z = 0;
+            }
             if (r.friction) {
+                // Ff  = U * Fn
+                // Ff = Umg
                 const frictionForce = Math.abs(this.acceleration.y * this.mass * r.friction);
-                if (!__classPrivateFieldGet(this, _RigidBody_frictionApplied, "f")) {
+                if (__classPrivateFieldGet(this, _RigidBody_frictionApplied, "f").x === 0 && Math.abs(this.velocity.x) > 0) {
                     if (Math.abs(this.velocity.x) >= frictionForce) {
                         this.velocity.x += (this.velocity.x > 0 ? -frictionForce : frictionForce);
                     }
                     else {
                         this.velocity.x = 0;
                     }
-                    if (Math.abs(this.velocity.y) >= frictionForce) {
+                    __classPrivateFieldGet(this, _RigidBody_frictionApplied, "f").x = 1;
+                }
+                if (this.velocity.x === 0)
+                    __classPrivateFieldGet(this, _RigidBody_frictionApplied, "f").x = 0;
+                if (__classPrivateFieldGet(this, _RigidBody_frictionApplied, "f").z === 0 && Math.abs(this.velocity.z) > 0) {
+                    if (Math.abs(this.velocity.z) >= frictionForce) {
                         this.velocity.z += (this.velocity.z > 0 ? -frictionForce : frictionForce);
                     }
                     else {
                         this.velocity.z = 0;
                     }
-                    __classPrivateFieldSet(this, _RigidBody_frictionApplied, true, "f");
+                    __classPrivateFieldGet(this, _RigidBody_frictionApplied, "f").z = 1;
                 }
-            }
-            if (r.isStationary) {
-                if (Math.abs(result.normal.y) > 0) {
-                    this.velocity.y = 0;
-                }
-                if (Math.abs(result.normal.x) > 0) {
-                    this.velocity.x = 0;
-                }
-                if (Math.abs(result.normal.z) > 0) {
-                    this.velocity.z = 0;
-                }
-            }
-            else {
+                if (this.velocity.z === 0)
+                    __classPrivateFieldGet(this, _RigidBody_frictionApplied, "f").z = 0;
             }
         });
         // transform
         this.obj.position.add(this.velocity.clone().multiplyScalar(deltaTime));
     }
 }
-_RigidBody_obj = new WeakMap(), _RigidBody_mass = new WeakMap(), _RigidBody_velocity = new WeakMap(), _RigidBody_acceleration = new WeakMap(), _RigidBody_isStationary = new WeakMap(), _RigidBody_friction = new WeakMap(), _RigidBody_frictionApplied = new WeakMap();
+_RigidBody_obj = new WeakMap(), _RigidBody_mass = new WeakMap(), _RigidBody_velocity = new WeakMap(), _RigidBody_acceleration = new WeakMap(), _RigidBody_isStationary = new WeakMap(), _RigidBody_friction = new WeakMap(), _RigidBody_frictionApplied = new WeakMap(), _RigidBody_isColliding = new WeakMap();
 const bodies = [];
 // ------------------------------------- //
 // idk
@@ -131,7 +115,7 @@ const geometry = new THREE.BoxGeometry(1, 1, 1);
 const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
 const cube = new THREE.Mesh(geometry, material);
 cube.position.z = -10;
-const floorGeometry = new THREE.BoxGeometry(25, 0.1, 25);
+const floorGeometry = new THREE.BoxGeometry(10, 0.1, 5);
 const floorMaterial = new THREE.MeshLambertMaterial({ color: 0xff00ff });
 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 floor.position.y = -3;
@@ -148,14 +132,14 @@ const light = new THREE.AmbientLight(0x404040); // soft white light
 const pl = new THREE.PointLight(0xFFFFFF, 1, 100);
 pl.position.set(0, 5, -10);
 // declare rigid bodies
-const cb = new RigidBody(cube, 1, new THREE.Vector3(5, 0, 0), new THREE.Vector3(0, 0, 0), false);
-const fb = new RigidBody(floor, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true, 1);
+const cb = new RigidBody(cube, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), false);
+const fb = new RigidBody(floor, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true);
 const wb = new RigidBody(wall, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true);
 const wb1 = new RigidBody(wall2, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true);
 scene.add(cube);
 scene.add(floor);
-scene.add(wall);
-scene.add(wall2);
+//scene.add(wall);
+//scene.add(wall2);
 scene.add(light);
 scene.add(pl);
 bodies.push(cb);
@@ -166,7 +150,7 @@ function animate() {
     requestAnimationFrame(animate);
     const deltaTime = clock.getDelta();
     for (let i = 0; i < bodies.length; i++) {
-        bodies[i].update(0.008);
+        bodies[i].update(deltaTime);
     }
     renderer.render(scene, camera);
     stats.update();
@@ -195,7 +179,15 @@ document.addEventListener("keydown", onDocumentKeyDown, false);
 function onDocumentKeyDown(event) {
     var keyCode = event.which;
     if (keyCode == 32) {
-        cb.obj.position.set(0, 5, -10);
+        cb.velocity.x = -5;
+    }
+}
+;
+document.addEventListener("keyup", onDocumentKeyUp, false);
+function onDocumentKeyUp(event) {
+    var keyCode = event.which;
+    if (keyCode == 32) {
+        cb.velocity.x = 0;
     }
 }
 ;
