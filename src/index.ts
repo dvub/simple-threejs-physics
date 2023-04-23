@@ -85,11 +85,18 @@ class RigidBody {
             // Ff  = U * Fn
             // Ff = U * mg
             if (r.friction) {
-                const Ff = Math.abs(this.acceleration.y * this.mass * r.friction);
+                const frictionForce = Math.abs(this.acceleration.y * this.mass * r.friction);
                 if (!this.#frictionApplied) {
-                    this.velocity.x += (this.velocity.x > 0 ? -Ff : Ff);
-                    
-                    this.velocity.z += (this.velocity.z > 0 ? -Ff : Ff);
+                    if (Math.abs(this.velocity.x) >= frictionForce) {
+                        this.velocity.x += (this.velocity.x > 0 ? -frictionForce : frictionForce);
+                    } else {
+                        this.velocity.x = 0;
+                    }
+                    if (Math.abs(this.velocity.y) >= frictionForce) {
+                        this.velocity.z += (this.velocity.z > 0 ? -frictionForce : frictionForce);
+                    } else {
+                        this.velocity.z = 0;
+                    }
                     this.#frictionApplied = true;
                 }
 
@@ -164,7 +171,7 @@ const pl = new THREE.PointLight( 0xFFFFFF, 1, 100 );
 pl.position.set( 0, 5, -10 );
 
 // declare rigid bodies
-const cb = new RigidBody(cube, 1, new THREE.Vector3(9.81,0,0), new THREE.Vector3(0,0,0), false);
+const cb = new RigidBody(cube, 1, new THREE.Vector3(5,0,0), new THREE.Vector3(0,0,0), false);
 const fb = new RigidBody(floor, 1, new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0), true, 1);
 const wb = new RigidBody(wall, 1, new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0), true);
 const wb1 = new RigidBody(wall2, 1, new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0), true);
