@@ -26,12 +26,14 @@ class RigidBody {
         this.#acceleration = acceleration;
         this.#isStationary = isStationary;
         this.#friction = friction;
+
+        bodies.push(this);
     }
     // setters
     public set obj(obj: THREE.Mesh) { this.#obj = obj }
     public set mass(mass: number) { this.#mass = mass }
     public set velocity(velocity: THREE.Vector3) { this.#velocity = velocity }
-    public set acceleration(acceleration: THREE.Vector3) {this.#acceleration = acceleration  }
+    public set acceleration(acceleration: THREE.Vector3) { this.#acceleration = acceleration }
     public set isStationary(isStationary: boolean) { this.#isStationary = isStationary }
     public set friction(friction: number) { this.#friction = friction }
     // getters
@@ -51,6 +53,9 @@ class RigidBody {
         this.acceleration.y = -9.81;
         // v = v0 + at
         // velocity += acceleration * time
+
+        rk4(this.obj.position.x, this.#velocity.x, )
+
         this.velocity.add(this.#acceleration.clone().multiplyScalar(this.mass * deltaTime));
 
         // collision response implementation, extra dynamics due to collision go here
@@ -66,7 +71,7 @@ class RigidBody {
                 if ((result.normal.z > 0 && this.velocity.z < 0) || (result.normal.z < 0 && this.velocity.z > 0)) this.velocity.z = 0;
             } else {
                 // elastic collision
-                
+
             }
 
 
@@ -88,7 +93,6 @@ class RigidBody {
                     }
                 }
             }
-
 
         });
 
@@ -112,7 +116,7 @@ const stats = new Stats();
 
 renderer.setSize(window.innerWidth, window.innerHeight);
 camera.position.y = -5;
-camera.lookAt(new THREE.Vector3(0,0,-10));
+camera.lookAt(new THREE.Vector3(0, 0, -10));
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.update();
 
@@ -126,7 +130,7 @@ const cube = new THREE.Mesh(geometry, material);
 cube.position.z = -10;
 
 
-const material1= new THREE.MeshLambertMaterial({ color: 0xff0000 });
+const material1 = new THREE.MeshLambertMaterial({ color: 0xff0000 });
 const cube1 = new THREE.Mesh(geometry, material1);
 cube1.position.z = -10;
 cube1.position.x = 3;
@@ -170,20 +174,16 @@ scene.add(light);
 scene.add(pl);
 
 
-bodies.push(cb);
-bodies.push(cb1);
-bodies.push(fb);
-//bodies.push(wb);
-//bodies.push(wb1);
-
 function animate() {
 
     requestAnimationFrame(animate);
+
     const deltaTime = clock.getDelta();
     for (let i = 0; i < bodies.length; i++) {
         bodies[i].update(deltaTime);
     }
 
+    // render, update shit
     renderer.render(scene, camera);
     stats.update();
 
@@ -218,6 +218,46 @@ const detectCollision = (
     }
 };
 
+// code adapted from: https://mtdevans.com/index.html
+
+// Converted from Python version: http://doswa.com/2009/01/02/fourth-order-runge-kutta-numerical-integration.html
+function rk4(
+    x: number,
+    v: number,
+    a: (_x: number, _v: number, _dt: number) => number,
+    dt: number
+) {
+    // Returns final (position, velocity) array after time dt has passed.
+    //        x: initial position
+    //        v: initial velocity
+    //        a: acceleration function a(x,v,dt) (must be callable)
+    //        dt: timestep
+    var x1 = x;
+    var v1 = v;
+    var a1 = a(x1, v1, 0);
+
+    var x2 = x + 0.5 * v1 * dt;
+    var v2 = v + 0.5 * a1 * dt;
+    var a2 = a(x2, v2, dt / 2);
+
+    var x3 = x + 0.5 * v2 * dt;
+    var v3 = v + 0.5 * a2 * dt;
+    var a3 = a(x3, v3, dt / 2);
+
+    var x4 = x + v3 * dt;
+    var v4 = v + a3 * dt;
+    var a4 = a(x4, v4, dt);
+
+    var xf = x + (dt / 6) * (v1 + 2 * v2 + 2 * v3 + v4);
+    var vf = v + (dt / 6) * (a1 + 2 * a2 + 2 * a3 + a4);
+
+    return {
+        position: xf,
+        velocity: vf,
+    };
+}
+
+
 document.addEventListener("keydown", onDocumentKeyDown, false);
 function onDocumentKeyDown(event: any) {
     var keyCode = event.which;
@@ -226,14 +266,4 @@ function onDocumentKeyDown(event: any) {
 
     }
 };
-document.addEventListener("keyup", onDocumentKeyUp, false);
-function onDocumentKeyUp(event: any) {
-    var keyCode = event.which;
-    if (keyCode == 32) {
-        // cb.velocity.x = 0;
-
-    }
-};
-
-
 animate();
