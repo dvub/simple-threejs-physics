@@ -35,7 +35,7 @@ class RigidBody {
     public set velocity(velocity: THREE.Vector3) { this.#velocity = velocity }
     public set acceleration(acceleration: THREE.Vector3) { this.#acceleration = acceleration }
     public set isStationary(isStationary: boolean) { this.#isStationary = isStationary }
-    public set friction(friction: number) { this.#friction = friction }
+    public set friction(friction: number | undefined) { this.#friction = friction }
     // getters
     public get obj() { return this.#obj }
     public get mass() { return this.#mass }
@@ -54,9 +54,21 @@ class RigidBody {
         // v = v0 + at
         // velocity += acceleration * time
 
-        rk4(this.obj.position.x, this.#velocity.x, )
+        const o = rk4(this.obj.position.x, this.#velocity.x, (x,v,dt) => {
+            return 0;
+        }, deltaTime);
+        const t= rk4(this.obj.position.y, this.#velocity.y, (x,v,dt) => {
 
-        this.velocity.add(this.#acceleration.clone().multiplyScalar(this.mass * deltaTime));
+            return this.acceleration.y * this.mass;
+        }, deltaTime);
+               const y = rk4(this.obj.position.z, this.#velocity.z, (x,v,dt) => {
+
+            return 0;
+        }, deltaTime);
+
+        this.velocity.x = o.velocity;
+        this.velocity.y = t.velocity;
+        this.velocity.z = y.velocity;
 
         // collision response implementation, extra dynamics due to collision go here
         detectCollision(this.#obj, bodies, (result, r) => {
@@ -74,7 +86,7 @@ class RigidBody {
 
             }
 
-
+            /*
             if (r.friction) {
 
                 // Ff  = U * Fn
@@ -93,12 +105,15 @@ class RigidBody {
                     }
                 }
             }
+            */
 
         });
+        
 
-        // transform
-        this.obj.position.add(this.velocity.clone().multiplyScalar(deltaTime));
 
+        this.obj.position.x = o.position;
+        this.obj.position.y = t.position;
+        this.obj.position.z = y.position;
     }
 }
 const bodies: RigidBody[] = [];

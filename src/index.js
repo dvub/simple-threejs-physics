@@ -53,8 +53,18 @@ class RigidBody {
         this.acceleration.y = -9.81;
         // v = v0 + at
         // velocity += acceleration * time
-        rk4(this.obj.position.x, __classPrivateFieldGet(this, _RigidBody_velocity, "f").x);
-        this.velocity.add(__classPrivateFieldGet(this, _RigidBody_acceleration, "f").clone().multiplyScalar(this.mass * deltaTime));
+        const o = rk4(this.obj.position.x, __classPrivateFieldGet(this, _RigidBody_velocity, "f").x, (x, v, dt) => {
+            return 0;
+        }, deltaTime);
+        const t = rk4(this.obj.position.y, __classPrivateFieldGet(this, _RigidBody_velocity, "f").y, (x, v, dt) => {
+            return this.acceleration.y * this.mass;
+        }, deltaTime);
+        const y = rk4(this.obj.position.z, __classPrivateFieldGet(this, _RigidBody_velocity, "f").z, (x, v, dt) => {
+            return 0;
+        }, deltaTime);
+        this.velocity.x = o.velocity;
+        this.velocity.y = t.velocity;
+        this.velocity.z = y.velocity;
         // collision response implementation, extra dynamics due to collision go here
         detectCollision(__classPrivateFieldGet(this, _RigidBody_obj, "f"), bodies, (result, r) => {
             __classPrivateFieldSet(this, _RigidBody_isColliding, true, "f");
@@ -69,22 +79,30 @@ class RigidBody {
             else {
                 // elastic collision
             }
+            /*
             if (r.friction) {
+
                 // Ff  = U * Fn
                 // Ff = Umg
                 const frictionForce = Math.abs(this.acceleration.y * this.mass * r.friction * deltaTime);
+
                 if (Math.abs(this.velocity.x) > 0) {
+
                     if (Math.abs(this.velocity.x) >= frictionForce) {
+
                         this.velocity.x += (this.velocity.x > 0 ? -frictionForce : frictionForce);
-                    }
-                    else {
+
+                    } else {
+
                         this.velocity.x = 0;
                     }
                 }
             }
+            */
         });
-        // transform
-        this.obj.position.add(this.velocity.clone().multiplyScalar(deltaTime));
+        this.obj.position.x = o.position;
+        this.obj.position.y = t.position;
+        this.obj.position.z = y.position;
     }
 }
 _RigidBody_obj = new WeakMap(), _RigidBody_mass = new WeakMap(), _RigidBody_velocity = new WeakMap(), _RigidBody_acceleration = new WeakMap(), _RigidBody_isStationary = new WeakMap(), _RigidBody_friction = new WeakMap(), _RigidBody_frictionApplied = new WeakMap(), _RigidBody_isColliding = new WeakMap();
