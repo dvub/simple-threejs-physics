@@ -56,6 +56,7 @@ class RigidBody {
             if (r.isStationary) {
                 if ((result.normal.y > 0 && this.velocity.y < 0) || (result.normal.y < 0 && this.velocity.y > 0)) {
                     i.velocity.y = 0;
+                    this.acceleration.y = 0;
                 }
                 if ((result.normal.x > 0 && this.velocity.x < 0) || (result.normal.x < 0 && this.velocity.x > 0)) {
                     i.velocity.x = 0;

@@ -43,59 +43,59 @@ class RigidBody {
     public get friction(): number | undefined { return this.#friction }
 
     public update(deltaTime: number) {
-
         if (this.isStationary) return;
 
         // accel due to grav
         this.acceleration.y = -9.81;
 
-        const i = rk4(this.obj.position, this.velocity, (x,v,dt) => {
+        const i = rk4(this.obj.position, this.velocity, (x, v, dt) => {
+
             const g = this.acceleration.y * this.mass;
-            return new THREE.Vector3(0,g,0);
+            return new THREE.Vector3(0, g, 0);
         }, deltaTime);
-        
+
         detectCollision(this.obj, bodies, (result, r) => {
-            
+
             if (r.isStationary) {
 
                 if ((result.normal.y > 0 && this.velocity.y < 0) || (result.normal.y < 0 && this.velocity.y > 0)) {
 
                     i.velocity.y = 0;
+                    this.acceleration.y = 0;
                 }
                 if ((result.normal.x > 0 && this.velocity.x < 0) || (result.normal.x < 0 && this.velocity.x > 0)) {
                     i.velocity.x = 0;
-                } 
+                }
 
                 if ((result.normal.z > 0 && this.velocity.z < 0) || (result.normal.z < 0 && this.velocity.z > 0)) {
                     i.velocity.z = 0;
                 }
             }
         });
-
-        this.velocity  = i.velocity;
+        this.velocity = i.velocity;
 
         this.obj.position.set(i.position.x, i.position.y, i.position.z);
 
-                    /*
-            if (r.friction) {
+        /*
+if (r.friction) {
 
-                // Ff  = U * Fn
-                // Ff = Umg
-                const frictionForce = Math.abs(this.acceleration.y * this.mass * r.friction * deltaTime);
+    // Ff  = U * Fn
+    // Ff = Umg
+    const frictionForce = Math.abs(this.acceleration.y * this.mass * r.friction * deltaTime);
 
-                if (Math.abs(this.velocity.x) > 0) {
+    if (Math.abs(this.velocity.x) > 0) {
 
-                    if (Math.abs(this.velocity.x) >= frictionForce) {
+        if (Math.abs(this.velocity.x) >= frictionForce) {
 
-                        this.velocity.x += (this.velocity.x > 0 ? -frictionForce : frictionForce);
+            this.velocity.x += (this.velocity.x > 0 ? -frictionForce : frictionForce);
 
-                    } else {
+        } else {
 
-                        this.velocity.x = 0;
-                    }
-                }
-            }
-            */
+            this.velocity.x = 0;
+        }
+    }
+}
+*/
     }
 }
 const bodies: RigidBody[] = [];
