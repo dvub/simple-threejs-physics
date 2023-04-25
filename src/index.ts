@@ -9,8 +9,6 @@ class RigidBody {
     #acceleration: THREE.Vector3;
     #isStationary: boolean;
     #friction: number | undefined;
-    #frictionApplied: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
-    #isColliding: boolean = false;
 
     constructor(
         obj: THREE.Mesh = new THREE.Mesh(undefined, undefined),
@@ -45,44 +43,38 @@ class RigidBody {
     public get friction(): number | undefined { return this.#friction }
 
     public update(deltaTime: number) {
-        this.#isColliding = false;
 
         if (this.isStationary) return;
 
         // accel due to grav
         this.acceleration.y = -9.81;
-        // v = v0 + at
-        // velocity += acceleration * time
-
-        const o = rk4(this.obj.position, this.velocity, (x,v,dt) => {
-            const g = this.acceleration.y * this.mass;
-            return new THREE.Vector3(0,g,0);
-        }, deltaTime);
-
-        this.velocity = o.velocity;
-
-        // collision response implementation, extra dynamics due to collision go here
-        detectCollision(this.#obj, bodies, (result, r) => {
-            this.#isColliding = true;
-
+        detectCollision(this.obj, bodies, (result, r) => {
+            
             if (r.isStationary) {
 
                 if ((result.normal.y > 0 && this.velocity.y < 0) || (result.normal.y < 0 && this.velocity.y > 0)) {
 
-                    this.velocity.y = 0;
+                    this.velocity.setY(0);
                 }
                 if ((result.normal.x > 0 && this.velocity.x < 0) || (result.normal.x < 0 && this.velocity.x > 0)) {
-                    this.velocity.x = 0;
+                    this.velocity.setX(0);
                 } 
 
                 if ((result.normal.z > 0 && this.velocity.z < 0) || (result.normal.z < 0 && this.velocity.z > 0)) {
-                    this.velocity.z = 0;
+                    this.velocity.setZ(0);
                 }
-            } else {
-
             }
+        });
+        const i = rk4(this.obj.position, this.velocity, (x,v,dt) => {
+            const g = this.acceleration.y * this.mass;
+            return new THREE.Vector3(0,g,0);
+        }, deltaTime);
 
-            /*
+
+        this.velocity = i.velocity;
+        this.obj.position.set(i.position.x, i.position.y, i.position.z);
+
+                    /*
             if (r.friction) {
 
                 // Ff  = U * Fn
@@ -102,12 +94,6 @@ class RigidBody {
                 }
             }
             */
-
-        });
-        
-        this.obj.position.x = o.position;
-        this.obj.position.y = t.position;
-        this.obj.position.z = y.position;
     }
 }
 const bodies: RigidBody[] = [];
@@ -169,10 +155,12 @@ pl.position.set(0, 5, -10);
 
 // declare rigid bodies
 const cb = new RigidBody(cube, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), false);
-// const cb1 = new RigidBody(cube1, 2, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), false);
 const fb = new RigidBody(floor, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true, 0.25);
+// const cb1 = new RigidBody(cube1, 2, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), false);
+/*
 const wb = new RigidBody(wall, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true);
 const wb1 = new RigidBody(wall2, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true);
+*/
 
 scene.add(cube);
 // scene.add(cube1);
@@ -245,21 +233,21 @@ function rk4(
     const v1 = v.clone();
     const a1 = a(x1.clone(), v1.clone(), 0);
 
-    const x2 = x.clone().add(v1.clone().multiplyScalar(0.5).multiplyScalar(dt));
-    const v2 = v.clone().add(a1.clone().multiplyScalar(0.5).multiplyScalar(dt));
+    const x2 = x.clone().add(v1.clone().multiplyScalar(0.5 * dt));
+    const v2 = v.clone().add(a1.clone().multiplyScalar(0.5 * dt));
 
     const a2 = a(x2.clone(), v2.clone(), dt / 2);
 
-    const x3 = x.clone().add(v2.clone().multiplyScalar(0.5).multiplyScalar(dt));
-    const v3 = v.clone().add(a2.clone().multiplyScalar(0.5).multiplyScalar(dt));
+    const x3 = x.clone().add(v2.clone().multiplyScalar(0.5 * dt));
+    const v3 = v.clone().add(a2.clone().multiplyScalar(0.5 * dt));
     const a3 = a(x3.clone(), v3.clone(), dt / 2);
 
     const x4 = x.clone().add(v3.multiplyScalar(dt));
     const v4 = v.clone().add(a3.multiplyScalar(dt));
     const a4 = a(x4.clone(), v4.clone(), dt);
 
-    const xf = x.clone().add(v2.clone().multiplyScalar(2).add(v1).add(v4).add(v3.multiplyScalar(2)).multiplyScalar(dt / 6));
-    const vf = v.clone().add(a2.clone().multiplyScalar(2).add(a1).add(a4).add(a3.multiplyScalar(2)).multiplyScalar(dt / 6));
+    const xf = x.clone().add((v1.clone().add(v2.clone().multiplyScalar(2)).add(v3.clone().multiplyScalar(2)).add(v4.clone())).multiplyScalar(dt / 6));
+    const vf = v.clone().add((a1.clone().add(a2.clone().multiplyScalar(2)).add(a3.clone().multiplyScalar(2)).add(a4.clone())).multiplyScalar(dt / 6));
 
     return {
         position: xf,
