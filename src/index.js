@@ -1,99 +1,108 @@
-var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
-    if (kind === "m") throw new TypeError("Private method is not writable");
-    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
-    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
-    return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
-};
-var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, state, kind, f) {
-    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
-    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
-    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
-};
-var _RigidBody_obj, _RigidBody_mass, _RigidBody_velocity, _RigidBody_acceleration, _RigidBody_isStationary, _RigidBody_friction;
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import Stats from 'three/examples/jsm/libs/stats.module';
 class RigidBody {
     constructor(obj = new THREE.Mesh(undefined, undefined), mass = 0, velocity = new THREE.Vector3(0, 0, 0), acceleration = new THREE.Vector3(0, 0, 0), isStationary = false, friction = undefined) {
-        _RigidBody_obj.set(this, void 0);
-        _RigidBody_mass.set(this, void 0);
-        _RigidBody_velocity.set(this, void 0);
-        _RigidBody_acceleration.set(this, void 0);
-        _RigidBody_isStationary.set(this, void 0);
-        _RigidBody_friction.set(this, void 0);
-        __classPrivateFieldSet(this, _RigidBody_obj, obj, "f");
-        __classPrivateFieldSet(this, _RigidBody_mass, mass, "f");
-        __classPrivateFieldSet(this, _RigidBody_velocity, velocity, "f");
-        __classPrivateFieldSet(this, _RigidBody_acceleration, acceleration, "f");
-        __classPrivateFieldSet(this, _RigidBody_isStationary, isStationary, "f");
-        __classPrivateFieldSet(this, _RigidBody_friction, friction, "f");
+        this.isColliding = new THREE.Vector3(0, 0, 0);
+        this.obj = obj;
+        this.mass = mass;
+        this.velocity = velocity;
+        this.acceleration = acceleration;
+        this.isStationary = isStationary;
+        this.friction = friction;
         bodies.push(this);
     }
-    // setters
-    set obj(obj) { __classPrivateFieldSet(this, _RigidBody_obj, obj, "f"); }
-    set mass(mass) { __classPrivateFieldSet(this, _RigidBody_mass, mass, "f"); }
-    set velocity(velocity) { __classPrivateFieldSet(this, _RigidBody_velocity, velocity, "f"); }
-    set acceleration(acceleration) { __classPrivateFieldSet(this, _RigidBody_acceleration, acceleration, "f"); }
-    set isStationary(isStationary) { __classPrivateFieldSet(this, _RigidBody_isStationary, isStationary, "f"); }
-    set friction(friction) { __classPrivateFieldSet(this, _RigidBody_friction, friction, "f"); }
-    // getters
-    get obj() { return __classPrivateFieldGet(this, _RigidBody_obj, "f"); }
-    get mass() { return __classPrivateFieldGet(this, _RigidBody_mass, "f"); }
-    get velocity() { return __classPrivateFieldGet(this, _RigidBody_velocity, "f"); }
-    get acceleration() { return __classPrivateFieldGet(this, _RigidBody_acceleration, "f"); }
-    get isStationary() { return __classPrivateFieldGet(this, _RigidBody_isStationary, "f"); }
-    get friction() { return __classPrivateFieldGet(this, _RigidBody_friction, "f"); }
     update(deltaTime) {
         if (this.isStationary)
             return;
         // accel due to grav
+        this.isColliding.set(1, 1, 1);
         this.acceleration.y = -9.81;
-        const i = rk4(this.obj.position, this.velocity, (x, v, dt) => {
-            const g = this.acceleration.y * this.mass;
-            return new THREE.Vector3(0, g, 0);
-        }, deltaTime);
-        detectCollision(this.obj, bodies, (result, r) => {
-            if (r.isStationary) {
-                if ((result.normal.y > 0 && this.velocity.y < 0) || (result.normal.y < 0 && this.velocity.y > 0)) {
-                    i.velocity.y = 0;
-                    this.acceleration.y = 0;
+        const collision = detectCollision(this.obj);
+        if (collision) {
+            const { result, rb } = collision;
+            if (rb.isStationary) {
+                if ((result.normal.y > 0 && this.velocity.y <= 0) || (result.normal.y < 0 && this.velocity.y >= 0)) {
+                    this.isColliding.y = 0;
                 }
-                if ((result.normal.x > 0 && this.velocity.x < 0) || (result.normal.x < 0 && this.velocity.x > 0)) {
-                    i.velocity.x = 0;
+                if ((result.normal.x > 0 && this.velocity.x <= 0) || (result.normal.x < 0 && this.velocity.x >= 0)) {
+                    this.isColliding.x = 0;
                 }
-                if ((result.normal.z > 0 && this.velocity.z < 0) || (result.normal.z < 0 && this.velocity.z > 0)) {
-                    i.velocity.z = 0;
+                if ((result.normal.z > 0 && this.velocity.z <= 0) || (result.normal.z < 0 && this.velocity.z >= 0)) {
+                    this.isColliding.z = 0;
                 }
             }
-        });
-        this.velocity = i.velocity;
-        this.obj.position.set(i.position.x, i.position.y, i.position.z);
-        /*
-if (r.friction) {
-
-    // Ff  = U * Fn
-    // Ff = Umg
-    const frictionForce = Math.abs(this.acceleration.y * this.mass * r.friction * deltaTime);
-
-    if (Math.abs(this.velocity.x) > 0) {
-
-        if (Math.abs(this.velocity.x) >= frictionForce) {
-
-            this.velocity.x += (this.velocity.x > 0 ? -frictionForce : frictionForce);
-
-        } else {
-
-            this.velocity.x = 0;
+            if (rb.friction) {
+                // Ff  = U * Fn
+                // Ff = Umg
+                const frictionForce = Math.abs(this.acceleration.y * this.mass * rb.friction) * deltaTime;
+                if (Math.abs(this.velocity.x) > 0) {
+                    if (Math.abs(this.velocity.x) >= frictionForce) {
+                        this.velocity.x += (this.velocity.x > 0 ? -frictionForce : frictionForce);
+                    }
+                    else {
+                        this.velocity.x = 0;
+                    }
+                }
+            }
+        }
+        const i = rk4(this.obj.position, this.velocity, (x, v, dt) => {
+            const g = this.acceleration.clone().multiplyScalar(this.mass);
+            return g;
+        }, deltaTime);
+        this.velocity = i.multiply(this.isColliding);
+        this.obj.position.add(i.clone().multiplyScalar(deltaTime));
+    }
+}
+// code adapted from @Kartheyan's updated answer
+// https://stackoverflow.com/questions/11473755/how-to-detect-collision-in-three-js
+// takes a callback for what to do in case of a collision
+const detectCollision = (obj) => {
+    const meshes = bodies.map(x => x.obj);
+    const n = obj.geometry.attributes.position.count;
+    for (let i = 0; i < n; i++) {
+        const local = new THREE.Vector3().fromBufferAttribute(obj.geometry.attributes.position, i).clone();
+        const global = local.applyMatrix4(obj.matrix);
+        const direction = global.sub(obj.position);
+        const ray = new THREE.Raycaster(obj.position, direction.clone().normalize());
+        const results = ray.intersectObjects(meshes);
+        const result = results[0];
+        if (results.length > 0 && result.distance < direction.length()) {
+            //
+            // THIS COULD BE A PROBLEM
+            //
+            const rb = bodies.find(x => x.obj.uuid === result.object.uuid);
+            return {
+                result: result,
+                rb: rb,
+            };
         }
     }
-}
-*/
-    }
-}
-_RigidBody_obj = new WeakMap(), _RigidBody_mass = new WeakMap(), _RigidBody_velocity = new WeakMap(), _RigidBody_acceleration = new WeakMap(), _RigidBody_isStationary = new WeakMap(), _RigidBody_friction = new WeakMap();
+    return undefined;
+};
+// RK4 function
+// code adapted from: https://mtdevans.com/index.html
+// Converted from Python version: http://doswa.com/2009/01/02/fourth-order-runge-kutta-numerical-integration.html
+const rk4 = (x, v, a, dt) => {
+    // ... original comments removed
+    const x1 = x.clone();
+    const v1 = v.clone();
+    const a1 = a(x1.clone(), v1.clone(), 0);
+    const x2 = x.clone().add(v1.clone().multiplyScalar(0.5 * dt));
+    const v2 = v.clone().add(a1.clone().multiplyScalar(0.5 * dt));
+    const a2 = a(x2.clone(), v2.clone(), dt / 2);
+    const x3 = x.clone().add(v2.clone().multiplyScalar(0.5 * dt));
+    const v3 = v.clone().add(a2.clone().multiplyScalar(0.5 * dt));
+    const a3 = a(x3.clone(), v3.clone(), dt / 2);
+    const x4 = x.clone().add(v3.multiplyScalar(dt));
+    const v4 = v.clone().add(a3.multiplyScalar(dt));
+    const a4 = a(x4.clone(), v4.clone(), dt);
+    // const xf = x.clone().add((v1.clone().add(v2.clone().multiplyScalar(2)).add(v3.clone().multiplyScalar(2)).add(v4.clone())).multiplyScalar(dt / 6));
+    const vf = v.clone().add((a1.clone().add(a2.clone().multiplyScalar(2)).add(a3.clone().multiplyScalar(2)).add(a4.clone())).multiplyScalar(dt / 6));
+    return vf;
+};
 const bodies = [];
 // ------------------------------------- //
-// idk
 const clock = new THREE.Clock();
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -135,7 +144,7 @@ const pl = new THREE.PointLight(0xFFFFFF, 1, 100);
 pl.position.set(0, 5, -10);
 // declare rigid bodies
 const cb = new RigidBody(cube, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), false);
-const fb = new RigidBody(floor, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true, 0.25);
+const fb = new RigidBody(floor, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true, 0.3);
 // const cb1 = new RigidBody(cube1, 2, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), false);
 /*
 const wb = new RigidBody(wall, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true);
@@ -151,60 +160,12 @@ scene.add(pl);
 function animate() {
     requestAnimationFrame(animate);
     const deltaTime = clock.getDelta();
-    for (let i = 0; i < bodies.length; i++) {
-        bodies[i].update(deltaTime);
-    }
+    bodies.map(x => x.update(deltaTime));
     // render, update shit
     renderer.render(scene, camera);
     stats.update();
 }
 // ------------------------------------- //
-// code adapted from @Kartheyan's updated answer
-// https://stackoverflow.com/questions/11473755/how-to-detect-collision-in-three-js
-// takes a callback for what to do in case of a collision
-const detectCollision = (obj, bodies, onCollision) => {
-    const meshes = bodies.map(x => x.obj);
-    const n = obj.geometry.attributes.position.count;
-    for (let i = 0; i < n; i++) {
-        const local = new THREE.Vector3().fromBufferAttribute(obj.geometry.attributes.position, i).clone();
-        const global = local.applyMatrix4(obj.matrix);
-        const direction = global.sub(obj.position);
-        const ray = new THREE.Raycaster(obj.position, direction.clone().normalize());
-        const results = ray.intersectObjects(meshes);
-        const result = results[0];
-        if (results.length > 0 && result.distance < direction.length()) {
-            const r = bodies.find(x => x.obj.uuid === result.object.uuid);
-            onCollision(result, r);
-        }
-    }
-};
-// code adapted from: https://mtdevans.com/index.html
-// Converted from Python version: http://doswa.com/2009/01/02/fourth-order-runge-kutta-numerical-integration.html
-function rk4(x, v, a, dt) {
-    // Returns final (position, velocity) array after time dt has passed.
-    //        x: initial position
-    //        v: initial velocity
-    //        a: acceleration function a(x,v,dt) (must be callable)
-    //        dt: timestep
-    const x1 = x.clone();
-    const v1 = v.clone();
-    const a1 = a(x1.clone(), v1.clone(), 0);
-    const x2 = x.clone().add(v1.clone().multiplyScalar(0.5 * dt));
-    const v2 = v.clone().add(a1.clone().multiplyScalar(0.5 * dt));
-    const a2 = a(x2.clone(), v2.clone(), dt / 2);
-    const x3 = x.clone().add(v2.clone().multiplyScalar(0.5 * dt));
-    const v3 = v.clone().add(a2.clone().multiplyScalar(0.5 * dt));
-    const a3 = a(x3.clone(), v3.clone(), dt / 2);
-    const x4 = x.clone().add(v3.multiplyScalar(dt));
-    const v4 = v.clone().add(a3.multiplyScalar(dt));
-    const a4 = a(x4.clone(), v4.clone(), dt);
-    const xf = x.clone().add((v1.clone().add(v2.clone().multiplyScalar(2)).add(v3.clone().multiplyScalar(2)).add(v4.clone())).multiplyScalar(dt / 6));
-    const vf = v.clone().add((a1.clone().add(a2.clone().multiplyScalar(2)).add(a3.clone().multiplyScalar(2)).add(a4.clone())).multiplyScalar(dt / 6));
-    return {
-        position: xf,
-        velocity: vf,
-    };
-}
 document.addEventListener("keydown", onDocumentKeyDown, false);
 function onDocumentKeyDown(event) {
     var keyCode = event.which;
