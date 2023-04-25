@@ -48,23 +48,23 @@ class RigidBody {
             return;
         // accel due to grav
         this.acceleration.y = -9.81;
-        detectCollision(this.obj, bodies, (result, r) => {
-            if (r.isStationary) {
-                if ((result.normal.y > 0 && this.velocity.y < 0) || (result.normal.y < 0 && this.velocity.y > 0)) {
-                    this.velocity.setY(0);
-                }
-                if ((result.normal.x > 0 && this.velocity.x < 0) || (result.normal.x < 0 && this.velocity.x > 0)) {
-                    this.velocity.setX(0);
-                }
-                if ((result.normal.z > 0 && this.velocity.z < 0) || (result.normal.z < 0 && this.velocity.z > 0)) {
-                    this.velocity.setZ(0);
-                }
-            }
-        });
         const i = rk4(this.obj.position, this.velocity, (x, v, dt) => {
             const g = this.acceleration.y * this.mass;
             return new THREE.Vector3(0, g, 0);
         }, deltaTime);
+        detectCollision(this.obj, bodies, (result, r) => {
+            if (r.isStationary) {
+                if ((result.normal.y > 0 && this.velocity.y < 0) || (result.normal.y < 0 && this.velocity.y > 0)) {
+                    i.velocity.y = 0;
+                }
+                if ((result.normal.x > 0 && this.velocity.x < 0) || (result.normal.x < 0 && this.velocity.x > 0)) {
+                    i.velocity.x = 0;
+                }
+                if ((result.normal.z > 0 && this.velocity.z < 0) || (result.normal.z < 0 && this.velocity.z > 0)) {
+                    i.velocity.z = 0;
+                }
+            }
+        });
         this.velocity = i.velocity;
         this.obj.position.set(i.position.x, i.position.y, i.position.z);
         /*
