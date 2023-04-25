@@ -53,7 +53,7 @@ class RigidBody {
             const g = this.acceleration.y * this.mass;
             return new THREE.Vector3(0,g,0);
         }, deltaTime);
-
+        
         detectCollision(this.obj, bodies, (result, r) => {
             
             if (r.isStationary) {
