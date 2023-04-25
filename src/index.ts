@@ -243,24 +243,23 @@ function rk4(
     //        dt: timestep
     const x1 = x.clone();
     const v1 = v.clone();
-    const a1 = a(x1, v1, 0);
+    const a1 = a(x1.clone(), v1.clone(), 0);
 
     const x2 = x.clone().add(v1.clone().multiplyScalar(0.5).multiplyScalar(dt));
     const v2 = v.clone().add(a1.clone().multiplyScalar(0.5).multiplyScalar(dt));
 
-    const a2 = a(x2, v2, dt / 2);
+    const a2 = a(x2.clone(), v2.clone(), dt / 2);
 
     const x3 = x.clone().add(v2.clone().multiplyScalar(0.5).multiplyScalar(dt));
     const v3 = v.clone().add(a2.clone().multiplyScalar(0.5).multiplyScalar(dt));
-    const a3 = a(x3, v3, dt / 2);
+    const a3 = a(x3.clone(), v3.clone(), dt / 2);
 
-    var x4 = x.clone().add(v3.multiplyScalar(dt));
-    var v4 = v.clone().add(a3.multiplyScalar(dt));
-    var a4 = a(x4, v4, dt);
+    const x4 = x.clone().add(v3.multiplyScalar(dt));
+    const v4 = v.clone().add(a3.multiplyScalar(dt));
+    const a4 = a(x4.clone(), v4.clone(), dt);
 
-
-    var xf = x + (dt / 6) * (v1 + 2 * v2 + 2 * v3 + v4);
-    var vf = v + (dt / 6) * (a1 + 2 * a2 + 2 * a3 + a4);
+    const xf = x.clone().add(v2.clone().multiplyScalar(2).add(v1).add(v4).add(v3.multiplyScalar(2)).multiplyScalar(dt / 6));
+    const vf = v.clone().add(a2.clone().multiplyScalar(2).add(a1).add(a4).add(a3.multiplyScalar(2)).multiplyScalar(dt / 6));
 
     return {
         position: xf,
