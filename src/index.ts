@@ -14,7 +14,7 @@ class RigidBody {
     constructor(
         obj: THREE.Mesh = new THREE.Mesh(undefined, undefined),
         mass: number = 0,
-        velocity: THREE.Vector3 = new THREE.Vector3(0, 0, 0),
+        velocity: THREE.Vector3 = new THREE.Vector3(0, 0, 0) ,
         acceleration: THREE.Vector3 = new THREE.Vector3(0, 0, 0),
         isStationary: boolean = false,
         friction: number | undefined = undefined,
@@ -60,10 +60,10 @@ class RigidBody {
                 }
             }
             if (rb.friction) {
-
+                /*
                 // Ff  = U * Fn
                 // Ff = Umg
-                /*
+                
                 const frictionForce = Math.abs(this.acceleration.y * this.mass * rb.friction) * deltaTime;
 
                 if (Math.abs(this.velocity.x) > 0) {
@@ -74,25 +74,34 @@ class RigidBody {
                         this.velocity.x = 0;
                     }
                 }
-                */
-                const f = new THREE.Vector3(0,-9.81, 0).clone().multiplyScalar(this.mass * rb.friction);
+                
+
+                // const frictionForce = (-9.81 * this.mass * rb.friction)* deltaTime;
+                const f = new THREE.Vector3(0,-9.81, 0).clone().multiplyScalar(this.mass * rb.friction * deltaTime);
+
+
+                const p = new THREE.Vector3(0, 0, -(f.x + f.y) / f.z);
+
                 const len = Math.abs(this.velocity.length());
                 if (len > 0) {
                     if (len >= Math.abs(f.length())) {
-                        console.log(f);
-                        this.velocity.add(f);
+                        this.velocity.add(p);
                     } else {
                         this.velocity.set(0,0,0);
                     }
                 }
-
+                */
             }
         }
+        
         const i = rk4(this.obj.position, this.velocity, (x, v, dt) => {
             const g = this.acceleration.clone().multiplyScalar(this.mass);
             return g;
         }, deltaTime);
         this.velocity = i.velocity;
+
+        console.log(this.velocity);
+
         this.obj.position.set(i.position.x, i.position.y, i.position.z)
 
     }
