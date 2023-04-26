@@ -16,32 +16,48 @@ class RigidBody {
         if (this.isStationary)
             return;
         // accel due to grav
-        this.isColliding.set(1, 1, 1);
         this.acceleration.y = -9.81;
         const collision = detectCollision(this.obj);
         if (collision) {
             const { result, rb } = collision;
             if (rb.isStationary) {
                 if ((result.normal.y > 0 && this.velocity.y <= 0) || (result.normal.y < 0 && this.velocity.y >= 0)) {
-                    this.isColliding.y = 0;
+                    this.velocity.y = 0;
+                    this.acceleration.y = 0;
                 }
                 if ((result.normal.x > 0 && this.velocity.x <= 0) || (result.normal.x < 0 && this.velocity.x >= 0)) {
-                    this.isColliding.x = 0;
+                    this.velocity.x = 0;
+                    this.acceleration.x = 0;
                 }
                 if ((result.normal.z > 0 && this.velocity.z <= 0) || (result.normal.z < 0 && this.velocity.z >= 0)) {
-                    this.isColliding.z = 0;
+                    this.velocity.z = 0;
+                    this.acceleration.z = 0;
                 }
             }
             if (rb.friction) {
                 // Ff  = U * Fn
                 // Ff = Umg
+                /*
                 const frictionForce = Math.abs(this.acceleration.y * this.mass * rb.friction) * deltaTime;
+
                 if (Math.abs(this.velocity.x) > 0) {
                     if (Math.abs(this.velocity.x) >= frictionForce) {
                         this.velocity.x += (this.velocity.x > 0 ? -frictionForce : frictionForce);
+
+                    } else {
+                        this.velocity.x = 0;
+                    }
+                }
+                */
+                const f = new THREE.Vector3(0, -9.81, 0).clone().multiplyScalar(this.mass * rb.friction);
+                const len = Math.abs(this.velocity.length());
+                if (len > 0) {
+                    if (len >= Math.abs(f.length())) {
+                        console.log(f);
+                        this.velocity.add(f);
                     }
                     else {
-                        this.velocity.x = 0;
+                        this.velocity.set(0, 0, 0);
                     }
                 }
             }
@@ -50,8 +66,8 @@ class RigidBody {
             const g = this.acceleration.clone().multiplyScalar(this.mass);
             return g;
         }, deltaTime);
-        this.velocity = i.multiply(this.isColliding);
-        this.obj.position.add(i.clone().multiplyScalar(deltaTime));
+        this.velocity = i.velocity;
+        this.obj.position.set(i.position.x, i.position.y, i.position.z);
     }
 }
 // code adapted from @Kartheyan's updated answer
@@ -97,9 +113,9 @@ const rk4 = (x, v, a, dt) => {
     const x4 = x.clone().add(v3.multiplyScalar(dt));
     const v4 = v.clone().add(a3.multiplyScalar(dt));
     const a4 = a(x4.clone(), v4.clone(), dt);
-    // const xf = x.clone().add((v1.clone().add(v2.clone().multiplyScalar(2)).add(v3.clone().multiplyScalar(2)).add(v4.clone())).multiplyScalar(dt / 6));
+    const xf = x.clone().add((v1.clone().add(v2.clone().multiplyScalar(2)).add(v3.clone().multiplyScalar(2)).add(v4.clone())).multiplyScalar(dt / 6));
     const vf = v.clone().add((a1.clone().add(a2.clone().multiplyScalar(2)).add(a3.clone().multiplyScalar(2)).add(a4.clone())).multiplyScalar(dt / 6));
-    return vf;
+    return { velocity: vf, position: xf };
 };
 const bodies = [];
 // ------------------------------------- //
@@ -144,7 +160,7 @@ const pl = new THREE.PointLight(0xFFFFFF, 1, 100);
 pl.position.set(0, 5, -10);
 // declare rigid bodies
 const cb = new RigidBody(cube, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), false);
-const fb = new RigidBody(floor, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true, 0.3);
+const fb = new RigidBody(floor, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true, 0.5);
 // const cb1 = new RigidBody(cube1, 2, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), false);
 /*
 const wb = new RigidBody(wall, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true);
