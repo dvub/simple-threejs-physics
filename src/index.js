@@ -34,6 +34,16 @@ class RigidBody {
                     this.acceleration.z = 0;
                 }
             }
+            if (!rb.isStationary) {
+                const m1v1i = this.velocity.clone().multiplyScalar(this.mass * 2);
+                const m2v2i = rb.velocity.clone().multiplyScalar(rb.mass);
+                const m1v2i = rb.velocity.clone().multiplyScalar(this.mass);
+                const v2f = m1v1i.add(m2v2i).sub(m1v2i);
+                v2f.divideScalar(this.mass + rb.mass);
+                const v1f = rb.velocity.clone().add(v2f).sub(this.velocity.clone());
+                this.velocity = v1f;
+                rb.velocity = v2f;
+            }
             if (rb.friction) {
                 /*
                 // Ff  = U * Fn
@@ -68,12 +78,12 @@ class RigidBody {
                 */
             }
         }
+        console.log(this.velocity);
         const i = rk4(this.obj.position, this.velocity, (x, v, dt) => {
             const g = this.acceleration.clone().multiplyScalar(this.mass);
             return g;
         }, deltaTime);
         this.velocity = i.velocity;
-        console.log(this.velocity);
         this.obj.position.set(i.position.x, i.position.y, i.position.z);
     }
 }
@@ -142,13 +152,11 @@ const geometry = new THREE.BoxGeometry(1, 1, 1);
 const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
 const cube = new THREE.Mesh(geometry, material);
 cube.position.z = -10;
-/*
 const material1 = new THREE.MeshLambertMaterial({ color: 0xff0000 });
 const cube1 = new THREE.Mesh(geometry, material1);
 cube1.position.z = -10;
 cube1.position.x = 3;
-cube1.position.y = -2;
-*/
+cube1.position.y = 0;
 const floorGeometry = new THREE.BoxGeometry(10, 0.1, 5);
 const floorMaterial = new THREE.MeshLambertMaterial({ color: 0xff00ff });
 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
@@ -168,13 +176,13 @@ pl.position.set(0, 5, -10);
 // declare rigid bodies
 const cb = new RigidBody(cube, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), false);
 const fb = new RigidBody(floor, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true, 0.5);
-// const cb1 = new RigidBody(cube1, 2, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), false);
+const cb1 = new RigidBody(cube1, 2, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), false);
 /*
 const wb = new RigidBody(wall, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true);
 const wb1 = new RigidBody(wall2, 1, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), true);
 */
 scene.add(cube);
-// scene.add(cube1);
+scene.add(cube1);
 scene.add(floor);
 //scene.add(wall);
 //scene.add(wall2);
@@ -194,6 +202,7 @@ function onDocumentKeyDown(event) {
     var keyCode = event.which;
     if (keyCode == 32) {
         cb.velocity.x = 5;
+        cb1.velocity.x = -5;
     }
 }
 ;
