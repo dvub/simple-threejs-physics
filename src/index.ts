@@ -9,7 +9,7 @@ class RigidBody {
   acceleration: THREE.Vector3;
   isStationary: boolean;
   friction: number | undefined;
-  isColliding: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
+  force: THREE.Vector3;
 
   constructor(
     obj: THREE.Mesh = new THREE.Mesh(undefined, undefined),
@@ -17,7 +17,9 @@ class RigidBody {
     velocity: THREE.Vector3 = new THREE.Vector3(0, 0, 0),
     acceleration: THREE.Vector3 = new THREE.Vector3(0, 0, 0),
     isStationary: boolean = false,
-    friction: number | undefined = undefined
+    friction: number | undefined = undefined,
+    force: THREE.Vector3 = new THREE.Vector3(0,0,0),
+    
   ) {
     this.obj = obj;
     this.mass = mass;
@@ -25,7 +27,7 @@ class RigidBody {
     this.acceleration = acceleration;
     this.isStationary = isStationary;
     this.friction = friction;
-
+    this.force = force;
     bodies.push(this);
   }
 
@@ -38,9 +40,22 @@ class RigidBody {
     if (this.isStationary) return;
 
     // accel due to grav
-    this.acceleration.y = -9.81;
+    this.force = new THREE.Vector3(0,-9.81,0).multiplyScalar(this.mass);
+
+    this.acceleration = new THREE.Vector3(0, -9.81, 0);
+
+    // integrate net force to get momentum
+    const momentum = rk4(new THREE.Vector3(0,0,0), this.force, (x,v,dt) => {
+      return new THREE.Vector3(0,0,0);
+    }, deltaTime);
+
+    // p = mv so... v = p/m
+    this.velocity = momentum.velocity.divideScalar(this.mass);
+
 
     const collision = detectCollision(this.obj);
+
+
     if (collision) {
       const { result, rb } = collision;
 
@@ -129,21 +144,21 @@ class RigidBody {
       }
     }
 
-    // this is where the integration occurs using the rk4 integrator (fourth order)
+    // this is where the integration occurs using the rk4 integrator
     const i = rk4(
       this.obj.position,
       this.velocity,
       (x, v, dt) => {
         // for a simple rigidbody, the net force is given by m * a;
-        const g = this.acceleration.clone().multiplyScalar(this.mass);
-        return g;
+        return this.acceleration
       },
       deltaTime
     );
-
-    // update velocity and position accordingly
     this.velocity = i.velocity;
+    // update velocity and position accordingly
     this.obj.position.set(i.position.x, i.position.y, i.position.z);
+    console.log(this.velocity);
+
   }
 }
 
@@ -271,6 +286,7 @@ const geometry = new THREE.BoxGeometry(1, 1, 1);
 const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
 const cube = new THREE.Mesh(geometry, material);
 cube.position.z = -10;
+cube.position.y = 10;
 
 const material1 = new THREE.MeshLambertMaterial({ color: 0xff0000 });
 const cube1 = new THREE.Mesh(geometry, material1);
@@ -343,7 +359,7 @@ function animate() {
   renderer.render(scene, camera);
   stats.update();
 }
-
+// bodies.map((x) => x.update(0.08));
 // ------------------------------------- //
 
 document.addEventListener("keydown", onDocumentKeyDown, false);
