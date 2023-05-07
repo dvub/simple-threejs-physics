@@ -20,15 +20,8 @@ class RigidBody {
     update(deltaTime) {
         if (this.isStationary)
             return;
-        // accel due to grav
-        this.force = new THREE.Vector3(0, -9.81, 0).multiplyScalar(this.mass);
+        // grav constant is 9.81 m/s^2
         this.acceleration = new THREE.Vector3(0, -9.81, 0);
-        // integrate net force to get momentum
-        const momentum = rk4(new THREE.Vector3(0, 0, 0), this.force, (x, v, dt) => {
-            return new THREE.Vector3(0, 0, 0);
-        }, deltaTime);
-        // p = mv so... v = p/m
-        this.velocity = momentum.velocity.divideScalar(this.mass);
         const collision = detectCollision(this.obj);
         if (collision) {
             const { result, rb } = collision;
@@ -107,12 +100,10 @@ class RigidBody {
         // this is where the integration occurs using the rk4 integrator
         const i = rk4(this.obj.position, this.velocity, (x, v, dt) => {
             // for a simple rigidbody, the net force is given by m * a;
-            return this.acceleration;
+            return this.acceleration.clone();
         }, deltaTime);
         this.velocity = i.velocity;
-        // update velocity and position accordingly
         this.obj.position.set(i.position.x, i.position.y, i.position.z);
-        console.log(this.velocity);
     }
 }
 // code adapted from @Kartheyan's updated answer
