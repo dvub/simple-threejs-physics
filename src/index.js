@@ -1,6 +1,9 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "three/examples/jsm/libs/stats.module";
+// TODO: 
+// don't calculate integrations at all in update() if no acceleration..?
+// 
 class RigidBody {
     constructor(obj = new THREE.Mesh(undefined, undefined), mass = 0, velocity = new THREE.Vector3(0, 0, 0), acceleration = new THREE.Vector3(0, 0, 0), isStationary = false, friction = undefined, force = new THREE.Vector3(0, 0, 0)) {
         this.obj = obj;
@@ -13,15 +16,20 @@ class RigidBody {
         bodies.push(this);
     }
     // function to update the state of the rigidbody
+    // a HUGE thanks to Glenn Fiedler and their resources on physics:
+    // https://gafferongames.com/post/physics_in_3d/
+    //
     /**
      *
      * @param {number} deltaTime - The timestep (in seconds) by which to simulate future state.
      */
     update(deltaTime) {
+        // stationary objects will not have any dynamics
         if (this.isStationary)
             return;
         // grav constant is 9.81 m/s^2
         this.acceleration = new THREE.Vector3(0, -9.81, 0);
+        // collision response
         const collision = detectCollision(this.obj);
         if (collision) {
             const { result, rb } = collision;
@@ -65,45 +73,63 @@ class RigidBody {
             }
             if (rb.friction) {
                 /*
-                        // Ff  = U * Fn
-                        // Ff = Umg
-                        
-                        const frictionForce = Math.abs(this.acceleration.y * this.mass * rb.friction) * deltaTime;
+                // Ff  = U * Fn
+                // Ff = Umg
+                
+                const frictionForce = Math.abs(this.acceleration.y * this.mass * rb.friction) * deltaTime;
         
-                        if (Math.abs(this.velocity.x) > 0) {
-                            if (Math.abs(this.velocity.x) >= frictionForce) {
-                                this.velocity.x += (this.velocity.x > 0 ? -frictionForce : frictionForce);
+                if (Math.abs(this.velocity.x) > 0) {
+                    if (Math.abs(this.velocity.x) >= frictionForce) {
+                        this.velocity.x += (this.velocity.x > 0 ? -frictionForce : frictionForce);
         
-                            } else {
-                                this.velocity.x = 0;
-                            }
-                        }
-                        
+                    } else {
+                        this.velocity.x = 0;
+                    }
+                }
+                
         
-                        // const frictionForce = (-9.81 * this.mass * rb.friction)* deltaTime;
-                        const f = new THREE.Vector3(0,-9.81, 0).clone().multiplyScalar(this.mass * rb.friction * deltaTime);
+                // const frictionForce = (-9.81 * this.mass * rb.friction)* deltaTime;
+                const f = new THREE.Vector3(0,-9.81, 0).clone().multiplyScalar(this.mass * rb.friction * deltaTime);
         
         
-                        const p = new THREE.Vector3(0, 0, -(f.x + f.y) / f.z);
+                const p = new THREE.Vector3(0, 0, -(f.x + f.y) / f.z);
         
-                        const len = Math.abs(this.velocity.length());
-                        if (len > 0) {
-                            if (len >= Math.abs(f.length())) {
-                                this.velocity.add(p);
-                            } else {
-                                this.velocity.set(0,0,0);
-                            }
-                        }
-                        */
+                const len = Math.abs(this.velocity.length());
+                if (len > 0) {
+                    if (len >= Math.abs(f.length())) {
+                        this.velocity.add(p);
+                    } else {
+                        this.velocity.set(0,0,0);
+                    }
+                }
+                */
             }
         }
-        // this is where the integration occurs using the rk4 integrator
+        // momentum is defined as p = mv
+        const momentum = this.velocity.clone().multiplyScalar(this.mass);
+        // our first integration takes force and momentum
+        // F = dp/dt
+        const newMomentum = rk4(momentum, this.force, (x, v, dt) => {
+            return this.acceleration.clone();
+        }, deltaTime);
+        // momentum has changed, thus, we have to update velocity
+        if (!momentum.equals(newMomentum.x)) {
+            console.log('something happened');
+            // now, recalculate velocity given our integrated force/momentum
+            this.velocity = newMomentum.x.divideScalar(this.mass);
+        }
+        // second integration take place to get new position and velocity
         const i = rk4(this.obj.position, this.velocity, (x, v, dt) => {
             // for a simple rigidbody, the net force is given by m * a;
             return this.acceleration.clone();
         }, deltaTime);
-        this.velocity = i.velocity;
-        this.obj.position.set(i.position.x, i.position.y, i.position.z);
+        // if the updated values are different, then we update velocity and position
+        if (!this.velocity.equals(i.y)) {
+            this.velocity = i.y;
+        }
+        if (!this.obj.position.equals(i.x)) {
+            this.obj.position.set(i.x.x, i.x.y, i.x.z);
+        }
     }
 }
 // code adapted from @Kartheyan's updated answer
@@ -167,7 +193,7 @@ const rk4 = (x, v, a, dt) => {
         .add(a3.clone().multiplyScalar(2))
         .add(a4.clone())
         .multiplyScalar(dt / 6));
-    return { velocity: vf, position: xf };
+    return { y: vf, x: xf };
 };
 const bodies = [];
 // EXAMPLE CODE BEGINS HERE
@@ -240,7 +266,6 @@ function onDocumentKeyDown(event) {
     var keyCode = event.which;
     if (keyCode == 32) {
         cb.velocity.x = 5;
-        cb1.velocity.x = -5;
     }
 }
 animate();
