@@ -7,23 +7,48 @@ import Stats from "three/examples/jsm/libs/stats.module";
 
 // 
 class RigidBody {
+
+  // constants
   obj: THREE.Mesh;
   mass: number;
-  velocity: THREE.Vector3;
-  acceleration: THREE.Vector3;
+  // some dynamics /response stuff
   isStationary: boolean;
   friction: number | undefined;
+  // secondary
+  velocity: THREE.Vector3;
+  acceleration: THREE.Vector3; 
+  // primary translational/linear value
   force: THREE.Vector3;
+  momentum: THREE.Vector3;
+
+  // primary rot value
+  orientation: THREE.Quaternion;
+  angularMomentum: THREE.Vector3;
+  // secondary rot values
+  spin: THREE.Quaternion;
+  angularVelocity: THREE.Vector3;
+  // constant rotational value
+  inertia: number;
+
+  // i am so sorry
 
   constructor(
-    obj: THREE.Mesh = new THREE.Mesh(undefined, undefined),
-    mass: number = 0,
-    velocity: THREE.Vector3 = new THREE.Vector3(0, 0, 0),
-    acceleration: THREE.Vector3 = new THREE.Vector3(0, 0, 0),
-    isStationary: boolean = false,
+    obj = new THREE.Mesh(undefined, undefined),
+    mass = 0.0,
+    velocity = new THREE.Vector3(0, 0, 0),
+    acceleration = new THREE.Vector3(0, 0, 0),
+    isStationary = false,
     friction: number | undefined = undefined,
-    force: THREE.Vector3 = new THREE.Vector3(0, 0, 0)
+    force = new THREE.Vector3(0, 0, 0),
+    momentum = new THREE.Vector3(0, 0, 0),
+    orientation = new THREE.Quaternion(0,0,0,0),
+    angularMomentum = new THREE.Vector3(0,0,0),
+    spin = new THREE.Quaternion(0,0,0,0),
+    angularVelocity = new THREE.Vector3(0,0,0),
+    inertia = 0.0,
+
   ) {
+    
     this.obj = obj;
     this.mass = mass;
     this.velocity = velocity;
@@ -31,6 +56,13 @@ class RigidBody {
     this.isStationary = isStationary;
     this.friction = friction;
     this.force = force;
+    this.momentum = momentum;
+    this.orientation = orientation;
+    this.angularMomentum = angularMomentum;
+    this.spin = spin;
+    this.angularVelocity = angularVelocity;
+    this.inertia = inertia;
+
     bodies.push(this);
   }
 
@@ -141,13 +173,11 @@ class RigidBody {
     }
 
     // momentum is defined as p = mv
-    const momentum = this.velocity.clone().multiplyScalar(this.mass);
-
     // our first integration takes force and momentum
     // F = dp/dt
     
     const newMomentum = rk4(
-      momentum,
+      this.momentum,
       this.force,
       (x, v, dt) => {
         return this.acceleration.clone();
@@ -156,7 +186,7 @@ class RigidBody {
     );
 
     // momentum has changed, thus, we have to update velocity
-    if (!momentum.equals(newMomentum.x)) {
+    if (!this.momentum.equals(newMomentum.x)) {
       console.log('something happened')
       // now, recalculate velocity given our integrated force/momentum
       this.velocity = newMomentum.x.divideScalar(this.mass);
