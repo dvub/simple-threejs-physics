@@ -1,7 +1,4 @@
-import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import Stats from "three/examples/jsm/libs/stats.module";
-
+import * as THREE from 'three';
 // TODO: 
 // don't calculate integrations at all in update() if no acceleration..?
 
@@ -308,4 +305,4 @@ const rk4 = (
 
 const bodies: RigidBody[] = [];
 
-module.exports = {RigidBody: RigidBody}
+export default {RigidBody}
