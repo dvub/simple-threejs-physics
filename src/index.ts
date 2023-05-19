@@ -1,8 +1,13 @@
 import * as THREE from 'three';
 // TODO: 
 // don't calculate integrations at all in update() if no acceleration..?
+const GRAVITATIONAL_ACCEL = -9.81;
+const ZERO = new THREE.Vector3(0,0,0);
+//
+function update(deltaTime: number): void {
+  bodies.map((x) => x.update(deltaTime));
+}
 
-// 
 class RigidBody {
 
   // constants
@@ -32,16 +37,16 @@ class RigidBody {
   constructor(
     obj = new THREE.Mesh(undefined, undefined),
     mass = 0.0,
-    velocity = new THREE.Vector3(0, 0, 0),
-    acceleration = new THREE.Vector3(0, 0, 0),
+    velocity = ZERO,
+    acceleration = ZERO,
     isStationary = false,
     friction: number | undefined = undefined,
-    force = new THREE.Vector3(0, 0, 0),
-    momentum = new THREE.Vector3(0, 0, 0),
+    force = ZERO,
+    momentum = ZERO,
     orientation = new THREE.Quaternion(0,0,0,0),
-    angularMomentum = new THREE.Vector3(0,0,0),
+    angularMomentum = ZERO,
     spin = new THREE.Quaternion(0,0,0,0),
-    angularVelocity = new THREE.Vector3(0,0,0),
+    angularVelocity = ZERO,
     inertia = 0.0,
 
   ) {
@@ -61,6 +66,7 @@ class RigidBody {
     this.inertia = inertia;
 
     bodies.push(this);
+    
   }
 
   // function to update the state of the rigidbody
@@ -76,7 +82,7 @@ class RigidBody {
     if (this.isStationary) return;
 
     // grav constant is 9.81 m/s^2
-    this.acceleration = new THREE.Vector3(0, -9.81, 0);
+    this.acceleration = new THREE.Vector3(0, GRAVITATIONAL_ACCEL, 0);
 
     // collision response
     const collision = detectCollision(this.obj);
@@ -184,7 +190,6 @@ class RigidBody {
 
     // momentum has changed, thus, we have to update velocity
     if (!this.momentum.equals(newMomentum.x)) {
-      console.log('something happened')
       // now, recalculate velocity given our integrated force/momentum
       this.velocity = newMomentum.x.divideScalar(this.mass);
     }
@@ -194,11 +199,12 @@ class RigidBody {
       this.obj.position,
       this.velocity,
       (x, v, dt) => {
-        // for a simple rigidbody, the net force is given by m * a;
+
         return this.acceleration.clone();
       },
       deltaTime
     );
+    
     // if the updated values are different, then we update velocity and position
     if (!this.velocity.equals(i.y)) {
       this.velocity = i.y;
@@ -206,6 +212,7 @@ class RigidBody {
     if (!this.obj.position.equals(i.x)) {
       this.obj.position.set(i.x.x, i.x.y, i.x.z);
     }
+    
   }
 }
 
@@ -305,4 +312,4 @@ const rk4 = (
 
 const bodies: RigidBody[] = [];
 
-export default {RigidBody}
+export { RigidBody, update }
