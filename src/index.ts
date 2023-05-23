@@ -37,16 +37,16 @@ class RigidBody {
   constructor(
     obj = new THREE.Mesh(undefined, undefined),
     mass = 0.0,
-    velocity = ZERO,
-    acceleration = ZERO,
+    velocity = new THREE.Vector3(0,0,0),
+    acceleration = new THREE.Vector3(0,0,0),
     isStationary = false,
     friction: number | undefined = undefined,
-    force = ZERO,
-    momentum = ZERO,
+    force = new THREE.Vector3(0,0,0),
+    momentum = new THREE.Vector3(0,0,0),
     orientation = new THREE.Quaternion(0,0,0,0),
-    angularMomentum = ZERO,
+    angularMomentum = new THREE.Vector3(0,0,0),
     spin = new THREE.Quaternion(0,0,0,0),
-    angularVelocity = ZERO,
+    angularVelocity = new THREE.Vector3(0,0,0),
     inertia = 0.0,
 
   ) {
@@ -83,7 +83,7 @@ class RigidBody {
 
     // grav constant is 9.81 m/s^2
     this.acceleration = new THREE.Vector3(0, GRAVITATIONAL_ACCEL, 0);
-
+    let bias = 0;
     // collision response
     const collision = detectCollision(this.obj);
     if (collision) {
@@ -91,25 +91,26 @@ class RigidBody {
 
       // if the object in collision is stationary,
       // we need to stop movement and acceleration (?) in the particular axis
-
+      
       if (rb.isStationary) {
+        const normal = result.normal!;
         if (
-          (result.normal.y > 0 && this.velocity.y <= 0) ||
-          (result.normal.y < 0 && this.velocity.y >= 0)
+          (normal.y > 0 && this.velocity.y <= 0) ||
+          (normal.y < 0 && this.velocity.y >= 0)
         ) {
           this.velocity.y = 0;
           this.acceleration.y = 0;
         }
         if (
-          (result.normal.x > 0 && this.velocity.x <= 0) ||
-          (result.normal.x < 0 && this.velocity.x >= 0)
+          (normal.x > 0 && this.velocity.x <= 0) ||
+          (normal.x < 0 && this.velocity.x >= 0)
         ) {
           this.velocity.x = 0;
           this.acceleration.x = 0;
         }
         if (
-          (result.normal.z > 0 && this.velocity.z <= 0) ||
-          (result.normal.z < 0 && this.velocity.z >= 0)
+          (normal.z > 0 && this.velocity.z <= 0) ||
+          (normal.z < 0 && this.velocity.z >= 0)
         ) {
           this.velocity.z = 0;
           this.acceleration.z = 0;
@@ -173,6 +174,10 @@ class RigidBody {
         }
         */
       }
+      const slop = 0.005;
+      const baumgarte = 0.1
+      // bias = -1 * (baumgarte / deltaTime) * Math.max(collision!.result.distance - slop, 0);
+
     }
 
     // momentum is defined as p = mv
@@ -183,7 +188,8 @@ class RigidBody {
       this.momentum,
       this.force,
       (x, v, dt) => {
-        return this.acceleration.clone();
+        // return this.acceleration.clone();
+        return new THREE.Vector3(0,0,0);
       },
       deltaTime
     );
@@ -191,9 +197,10 @@ class RigidBody {
     // momentum has changed, thus, we have to update velocity
     if (!this.momentum.equals(newMomentum.x)) {
       // now, recalculate velocity given our integrated force/momentum
-      this.velocity = newMomentum.x.divideScalar(this.mass);
+      // this.velocity = newMomentum.x.divideScalar(this.mass);
     }
 
+    
     // second integration take place to get new position and velocity
     const i = rk4(
       this.obj.position,
@@ -211,8 +218,8 @@ class RigidBody {
     }
     if (!this.obj.position.equals(i.x)) {
       this.obj.position.set(i.x.x, i.x.y, i.x.z);
+      this.obj.position.addScalar(bias); 
     }
-    
   }
 }
 
@@ -224,7 +231,7 @@ class RigidBody {
 // TODO: implement better collision detection
 const detectCollision = (
   obj: THREE.Mesh
-): { result: any; rb: RigidBody } | undefined => {
+): { result: THREE.Intersection<THREE.Object3D<THREE.Event>>; rb: RigidBody } | undefined => {
   const meshes = bodies.map((x) => x.obj);
 
   const n = obj.geometry.attributes.position.count;

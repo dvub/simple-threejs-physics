@@ -77,7 +77,7 @@ function animate() {
   requestAnimationFrame(animate);
 
   const deltaTime = clock.getDelta();
-  Physics.update(0.1);
+  Physics.update(deltaTime);
 
   // render, update shit
   renderer.render(scene, camera);
