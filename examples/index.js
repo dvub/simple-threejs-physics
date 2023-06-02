@@ -11,7 +11,8 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-const renderer = new THREE.WebGLRenderer();
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({canvas: canvas});
 const stats = new Stats();
 
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -19,6 +20,8 @@ camera.position.y = -5;
 camera.lookAt(new THREE.Vector3(0, 0, -10));
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.update();
+
+
 
 document.body.appendChild(renderer.domElement);
 document.body.appendChild(stats.dom);
